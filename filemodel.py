@@ -8,11 +8,13 @@ from PyQt5.QtCore import QAbstractTableModel, Qt
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 import os
+import sys
 import time
 import getpass
+import subprocess
 
 # Дефолтная директория - хомяк + текущий пользователь
-defaultPath = '/home/' + getpass.getuser()
+defaultPath = '/home/user' #+ getpass.getuser()
 
 # Отображаемые данные файла
 headerName = ['Name', 'Size', 'Type', 'Date modified']
@@ -24,30 +26,25 @@ class FileModel(QAbstractTableModel):
     """
     Абстрактный класс файловой модели
     """
-    def __init__(self, parent):
+    def __init__(self):
         super().__init__()
-        self.parent = parent
-        self.fileLayer = []
-        self.filling()
-        
 
-        # Переменная для хранения пути текущей дериктории
-        self.currentPath = defaultPath
+        self.__fileLayer__ = list()
+        self.__pathHistory__ = list()
+        self.__nextPath__ = list()
+        self.__currentPath__ = str()
+
+        self.setPath(defaultPath)
         pass
 
     def setPath(self, path):
         """
         Метод наполнения модели при изменении пути
         """
-
         # Заполнение содержимым
         self.beginResetModel()
         self.filling(path)
         self.endResetModel()
-
-        # Сброс оторажения
-        self.parent.reset()
-        self.parent.scrollToTop()
         pass
 
     def filling(self, path=None):
@@ -64,7 +61,7 @@ class FileModel(QAbstractTableModel):
         fileList.sort()
 
         # Кортеж для данных по файлам
-        self.fileLayer.clear()
+        self.__fileLayer__.clear()
         for it in fileList:
             data_line = []
 
@@ -113,17 +110,16 @@ class FileModel(QAbstractTableModel):
 
             # Дата модификации
             data_line.append(time.ctime(os.path.getmtime(self.fullPath)))
-            self.fileLayer.append(data_line)
+            self.__fileLayer__.append(data_line)
 
             # Присваиваем текущий путь хранимой переменной
-            self.currentPath = path
+            self.__currentPath__ = path
         pass
 
     def rowCount(self, index=QtCore.QModelIndex()):
         if index.isValid():
             return index.internalPointer().columnCount()
-        #print("fileLayer = ", len(self.fileLayer))
-        return len(self.fileLayer)
+        return len(self.__fileLayer__)
 
     def columnCount(self, index=QtCore.QModelIndex()):
         if index.isValid():
@@ -134,10 +130,10 @@ class FileModel(QAbstractTableModel):
         column = index.column()
         row = index.row()
 
-        if row >= len(self.fileLayer):
+        if row >= len(self.__fileLayer__):
             return None
 
-        it = self.fileLayer[row]
+        it = self.__fileLayer__[row]
 
         if not index.isValid():
             return None
@@ -147,18 +143,6 @@ class FileModel(QAbstractTableModel):
 
     def flags(self, index):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-    
-    def getCaracter(self, row, flag):
-        it = self.fileLayer[row]
-        if flag == 'name':
-            return it[0]
-        elif flag == 'size':
-            return it[1]
-        elif flag == 'type':
-            return it[2]
-        elif flag == 'mtime':
-            return it[3]
-        return None        
 
     def headerData(self, section, orientation, role):
         """
@@ -173,8 +157,59 @@ class FileModel(QAbstractTableModel):
             return section+1
         pass
 
-    def getCurrentPath(self):
+    def actionItem(self, row):
+        fileName = self.__fileLayer__[row][0]
+
+        fullPath = self.__currentPath__ + '/' + fileName
+        if os.path.isfile(fullPath):
+            self.open_file(fullPath)
+        elif os.path.isdir(fullPath):
+            self.__pathHistory__.append(self.__currentPath__)
+            self.setPath(fullPath)
+        pass
+
+    def goUp(self):
         """
-        Возврат текущей директории
+        Перейти во верхнюю дерикторию
         """
-        return self.currentPath
+        self.__pathHistory__.append(self.__currentPath__)
+        
+        basename = os.path.basename(self.__currentPath__)
+        lnum = self.__currentPath__.rfind(basename)
+        newPath = self.__currentPath__
+        if lnum > -1:
+            newPath = self.__currentPath__[:lnum]
+            if len(newPath) > 1 and newPath[len(newPath)-1] == '/':
+                newPath = newPath[:len(newPath)-1]
+        self.setPath(newPath)
+        pass
+
+    def goNext(self):
+        if len(self.__nextPath__) == 0:
+            print('Next path is empty')
+        else:
+            lastPath = self.__nextPath__.pop()
+            self.__pathHistory__.append(self.__currentPath__)
+            self.setPath(lastPath)
+        pass
+
+    def goBack(self):
+        if len(self.__pathHistory__) == 0:
+            print('Last path is empty')
+        else:
+            lastPath = self.__pathHistory__.pop()
+            self.__nextPath__.append(self.__currentPath__)
+            self.setPath(lastPath)
+        pass
+
+    def open_file(self, filename):
+        """
+        Открытие итема
+        """
+        # Если винда, открыть через функции win32
+        if sys.platform == "win32":
+            os.startfile(filename)
+        # Если нет, запустить подпроцесс
+        else:
+            opener = "open" if sys.platform == "darwin" else "xdg-open"
+            subprocess.call([opener, filename])

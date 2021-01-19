@@ -10,11 +10,11 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import QDir, pyqtSlot
 from PyQt5.QtGui import QKeySequence
 
-from fileview import FileView, FileViewSignals
+from fileview import FileView
 from aboutdialog import AboutDialog
 from keymanager import KeyManager, Sequence
 
-
+from filemodel import FileModel
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -24,23 +24,18 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         uic.loadUi('mainwindow.ui', self)
-
-        self.toolBar = QToolBar()
-        self.dockWidget.setTitleBarWidget(QtWidgets.QWidget(None))
-        #self.setWindowTitle(self.titleGenerator())
-        self.menuGenerator()
-        self.toolBarGenerator()
-
-        self.c = FileViewSignals.c
-        self.c.changePath.connect(self.titleGenerate)
-        self.c.changePath.connect(self.setPath)
-
-        # Отображение файловой структуры в таблице
+        
+        self.model = FileModel()
         self.view = FileView()
+        self.view.setModel(self.model)
 
-        #self.view.changePath.connect(self.titleGenerate)
         self.stackedWidget.insertWidget(0, self.view)
         self.stackedWidget.setCurrentIndex(0)
+
+        self.dockWidget.setTitleBarWidget(QtWidgets.QWidget(None))
+        self.menuGenerator()
+        self.toolBar = QToolBar()
+        self.toolBarGenerator()
 
     def menuGenerator(self):
         """
@@ -78,12 +73,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def toolBarGenerator(self):
         self.addToolBar(self.toolBar)
         toolBack = self.toolBar.addAction('Back')
-        toolBack.triggered.connect(self.back)
+        toolBack.triggered.connect(self.model.goBack)
 
         toolNext = self.toolBar.addAction('Next')
-        toolNext.triggered.connect(self.next)
+        toolNext.triggered.connect(self.model.goNext)
         toolUp = self.toolBar.addAction('Up')
-        toolUp.triggered.connect(self.upper)
+        toolUp.triggered.connect(self.model.goUp)
 
         emptyLeft = QWidget()
         emptyLeft.setMaximumWidth(20)
@@ -105,15 +100,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolBar.addWidget(findLine)
 
         pass
-
-    def titleGenerator(self):
-        """
-        Функция генерации заголовка окна
-        """
-        currentFolder = self.view.getCurrentFolder()
-        currentFolder = currentFolder.replace("/", "")
-        return currentFolder
-        pass
     
     def titleGenerate(self, path):
         basename = os.path.basename(path)
@@ -132,28 +118,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pathLine.setText(absolutePath)
         pass
 
-    def runto(self):
-        self.model.setRootPath("/tmp")
-        pass
-
     def find(self):
         pass
 
     def createNewFolder(self):
-        self.view.getCurrentFolder()
+        #self.view.getCurrentFolder()
         # Create new folder
-        pass
-
-    def upper(self):
-        self.view.goUp()
-        pass
-
-    def next(self):
-        self.view.goNext()
-        pass
-
-    def back(self):
-        self.view.goBack()
         pass
 
     def about(self):
