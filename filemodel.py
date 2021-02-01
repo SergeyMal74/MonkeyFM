@@ -22,12 +22,89 @@ headerName = ['Name', 'Size', 'Type', 'Date modified']
 # Флаги для headerName
 flags = ['name', 'size', 'type', 'mtime']
 
+#####################################################
+local = 0
+ssh = 1
+
+class Paginator:
+    def __init__(self):
+        self.statusList = ['local', 'ssh']
+        self.status = local
+        pass
+
+    def directionalArrow(self, path):
+        if(path.find('ssh:///') != -1):
+            self.status = ssh
+            return True
+        else:
+            self.status = local
+            return False
+        pass
+    
+    def listdir(self, path):
+        if self.status == local:
+            return os.listdir(path)
+        elif self.status == ssh:
+            return ['1', '2', '3']
+        pass
+
+    def getsize(self, path):
+        if self.status == local:
+            return os.path.getsize(path)
+        elif self.status == ssh:
+            return 500
+        pass
+
+    def isdir(self, path):
+        if self.status == local:
+            return os.path.isdir(path)
+        elif self.status == ssh:
+            return 500
+        pass
+    
+    def isfile(self, path):
+        if self.status == local:
+            return os.path.isfile(path)
+        elif self.status == ssh:
+            return 500
+        pass
+
+    def islink(self, path):
+        if self.status == local:
+            return os.path.islink(path)
+        elif self.status == ssh:
+            return 500
+        pass
+    
+    def getmtime(self, path):
+        if self.status == local:
+            return os.path.getmtime(path)
+        elif self.status == ssh:
+            return 500
+        pass
+    
+    def basename(self, path):
+        if self.status == local:
+            return os.path.basename(path)
+        elif self.status == ssh:
+            return 500
+        pass
+    
+    def startfile(self, path):
+        if self.status == local:
+            os.startfile(path)
+        elif self.status == ssh:
+            pass
+        pass
+
+
 class FileModel(QAbstractTableModel):
     """
     Абстрактный класс файловой модели
     """
     def __init__(self):
         super().__init__()
+        self.paginator = Paginator()
 
         self.__fileLayer__ = list()
         self.__pathHistory__ = list()
@@ -54,9 +131,11 @@ class FileModel(QAbstractTableModel):
         # Если принимаемый путь пустой, значит используем дефолтный
         if path == None:
                 path = defaultPath
+        elif self.paginator.directionalArrow(path):
+            pass
 
         # Получаем список содержимого
-        fileList = os.listdir(path)
+        fileList = self.paginator.listdir(path)
         # Сортируем по алфавиту
         fileList.sort()
 
@@ -72,7 +151,7 @@ class FileModel(QAbstractTableModel):
             data_line.append(it)
 
             # Размер файла
-            byteSize = os.path.getsize(self.fullPath)
+            byteSize = self.paginator.getsize(self.fullPath)
             # Tb Gb Mb Kb b
             kb_t = int(byteSize/1024)
             b_t = byteSize-(kb_t*1024)
@@ -99,17 +178,17 @@ class FileModel(QAbstractTableModel):
             data_line.append(size_str)
 
             # Обработка пути - присваивание типа
-            if os.path.isdir(self.fullPath):
+            if self.paginator.isdir(self.fullPath):
                 data_line.append('Directory')
-            elif os.path.isfile(self.fullPath):
+            elif self.paginator.isfile(self.fullPath):
                 data_line.append('File')
-            elif os.path.islink(self.fullPath):
+            elif self.paginator.islink(self.fullPath):
                 data_line.append('Symlink')
             else:
                 data_line.append('None')
 
             # Дата модификации
-            data_line.append(time.ctime(os.path.getmtime(self.fullPath)))
+            data_line.append(time.ctime(self.paginator.getmtime(self.fullPath)))
             self.__fileLayer__.append(data_line)
 
             # Присваиваем текущий путь хранимой переменной
@@ -161,9 +240,9 @@ class FileModel(QAbstractTableModel):
         fileName = self.__fileLayer__[row][0]
 
         fullPath = self.__currentPath__ + '/' + fileName
-        if os.path.isfile(fullPath):
+        if self.paginator.isfile(fullPath):
             self.open_file(fullPath)
-        elif os.path.isdir(fullPath):
+        elif self.paginator.isdir(fullPath):
             self.__pathHistory__.append(self.__currentPath__)
             self.setPath(fullPath)
         pass
@@ -174,7 +253,7 @@ class FileModel(QAbstractTableModel):
         """
         self.__pathHistory__.append(self.__currentPath__)
         
-        basename = os.path.basename(self.__currentPath__)
+        basename = self.paginator.basename(self.__currentPath__)
         lnum = self.__currentPath__.rfind(basename)
         newPath = self.__currentPath__
         if lnum > -1:
@@ -208,7 +287,7 @@ class FileModel(QAbstractTableModel):
         """
         # Если винда, открыть через функции win32
         if sys.platform == "win32":
-            os.startfile(filename)
+            self.paginator.startfile(filename)
         # Если нет, запустить подпроцесс
         else:
             opener = "open" if sys.platform == "darwin" else "xdg-open"

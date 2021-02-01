@@ -15,6 +15,7 @@ from aboutdialog import AboutDialog
 from keymanager import KeyManager, Sequence
 
 from filemodel import FileModel
+from placemodel import PlaceModel
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -27,6 +28,11 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.model = FileModel()
         self.view = FileView()
+
+        placemodel = PlaceModel(self.treeView)
+        self.treeView.setModel(placemodel)
+        self.treeView.expandAll()
+
         self.view.setModel(self.model)
 
         self.stackedWidget.insertWidget(0, self.view)
@@ -45,8 +51,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Меню файл
         menuFile = menuBar.addMenu('File')
+        menuFile.addAction('New Tab')
+        menuFile.addAction('New Window')
         menuFile.addAction('Create new folder')
+        menuFile.addAction('Create new document')
         menuFile.addSeparator()
+        menuFile.addAction('Connect to Server...')
+        menuFile.addSeparator()
+        menuFile.addAction('Properties')
+        menuFile.addAction('Close all windows')
+        menuFile.addAction('Close')
+
         # Выход
         exitAction = menuFile.addAction('Exit')
         exitAction.triggered.connect(self.exit)
@@ -57,13 +72,62 @@ class MainWindow(QtWidgets.QMainWindow):
         exitDirectionAction.triggered.connect(self.exit)
         exitDirectionAction.setShortcut(QKeySequence(KeyManager.getSequence(Sequence.ExitDirect)))
 
+        # Меню Edit
         menuEdit = menuBar.addMenu('Edit')
+        menuEdit.addAction('Undo')
+        menuEdit.addAction('Redo')
+        menuEdit.addSeparator()
+        menuEdit.addAction('Cut')
+        menuEdit.addAction('Copy')
+        menuEdit.addAction('Paste')
+        menuEdit.addSeparator()
+        menuEdit.addAction('Select All')
+        menuEdit.addAction('Select item matching')
+        menuEdit.addAction('Invert selection')
+        menuEdit.addSeparator()
+        menuEdit.addAction('Pin')
+        menuEdit.addAction('Duplicate')
+        menuEdit.addAction('Make links')
+        menuEdit.addAction('Rename')
+        menuEdit.addMenu('Copy to')
+        menuEdit.addMenu('Move to')
+        menuEdit.addSeparator()
+        menuEdit.addAction('Move to trash')
+        menuEdit.addAction('Delete')
+        menuEdit.addSeparator()
+        menuEdit.addAction('Compress...')
+        menuEdit.addSeparator()
+        menuEdit.addAction('Plugins')
+        menuEdit.addAction('Preferences')
+
+        # Меню View
         menuView = menuBar.addMenu('View')
+        menuView.addAction('Reload')
+        menuView.addSeparator()
+        menuView.addMenu('Sidebar')
+        # menuGo
         menuGo = menuBar.addMenu('Go')
+        menuGo.addAction('Open parent')
+        menuGo.addAction('Back')
+        menuGo.addAction('Forward')
+        menuGo.addAction('Same location for other pane')
+        menuGo.addSeparator()
+        menuGo.addAction('Home')
+        menuGo.addAction('Computer')
+        menuGo.addAction('Templates')
+        menuGo.addAction('Trash')
+        menuGo.addAction('Network')
+        menuGo.addAction('Search for files...')
+
+        # Меню Bookmarks
         menuBookmarks = menuBar.addMenu('Bookmarks')
+        menuBookmarks.addAction('Add Bookmarsk')
+        menuBookmarks.addAction('Edit Bookmarks...')
+        menuBookmarks.addSeparator()
 
         # Меню помощь
         menuHelp = menuBar.addMenu('Help')
+        menuHelp.addAction('All Topics')
         menuHelp.addAction('Keyboard shortcuts')
         menuHelp.addSeparator()
         aboutAction = menuHelp.addAction('About')
@@ -86,6 +150,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.toolBar.addWidget(QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum))
         self.toolBar.addWidget(emptyLeft)
         self.pathLine = QLineEdit()
+        self.pathLine.returnPressed.connect(self.insertPath)
         self.toolBar.addWidget(self.pathLine)
         emptyRight = QWidget()
         emptyRight.setMaximumWidth(20)
@@ -100,30 +165,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.toolBar.addWidget(findLine)
 
         pass
-    
-    def titleGenerate(self, path):
-        basename = os.path.basename(path)
-        if path == '/':
-            self.setWindowTitle(path)
-        elif len(basename) > 0:
-            self.setWindowTitle(basename)
-        else:
-            self.setWindowTitle('Monkey file manager')
-        pass
 
-    def setPath(self, path):
-        absolutePath = os.path.abspath(path)
-        absolutePath = str(absolutePath).replace('//', '/')
-        print(absolutePath)
-        self.pathLine.setText(absolutePath)
-        pass
-
-    def find(self):
-        pass
-
-    def createNewFolder(self):
-        #self.view.getCurrentFolder()
-        # Create new folder
+    def insertPath(self):
+        path = self.pathLine.text()
+        print(path)
+        self.model.setPath(path)
         pass
 
     def about(self):
